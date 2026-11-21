@@ -36,9 +36,7 @@
   <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
     <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
-        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-lg shadow">
-         <img src="logo.jpg" alt="Yudale logo" class="w-9 h-9 rounded-xl object-cover shadow bg-amber-400" />
-        </div>
+        <img src="logo.jpg" alt="Yudale logo" class="w-9 h-9 rounded-xl object-cover shadow bg-amber-400" />
         <div>
           <div class="font-bold text-base leading-tight tracking-tight">Yudale</div>
           <div class="text-[11px] text-slate-400 leading-tight">Split &amp; Settle</div>
@@ -645,9 +643,12 @@
       }
     }
 
-    async function afterAuthSuccess() {
+async function afterAuthSuccess() {
       if (pendingInviteToken) {
         await processPendingInvite();
+        if (!currentEventData) {
+          goHome();
+        }
       } else {
         goHome();
       }
@@ -922,8 +923,10 @@ function openSummarizeModal(showExistingFinal = false) {
       const modal = document.getElementById("summarize-modal");
       const controls = document.getElementById("summarize-controls");
       const output = document.getElementById("summarize-output");
-
-      const isFounder = (currentEventData.event.founderEmail || "").toLowerCase() === (currentUser.email || "").toLowerCase();
+      const ev = currentEventData.event || {};
+      const isFounder =
+        ev.role === "FOUNDER" ||
+        ((ev.founderEmail || "").toLowerCase() === (currentUser && currentUser.email ? currentUser.email.toLowerCase() : ""));
       const finalOption = document.getElementById("final-mode-option");
       const finalNote = document.getElementById("final-owner-only-note");
       const midRadio = document.querySelector('input[name="sum-mode"][value="MID"]');
