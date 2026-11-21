@@ -4,14 +4,14 @@
   "description": "Simple trip accounting and debt settlement between traveling friends.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#facc15",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+      "src": "logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]
