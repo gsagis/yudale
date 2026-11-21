@@ -348,7 +348,35 @@
 
   </main>
 
-  <!-- MODAL: SUMMARIZE OPTIONS & RESULTS -->
+  <!-- MODAL: INVITE LINK POPUP -->
+  <div id="invite-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-slate-900" id="invite-modal-title">Invite Friends</h3>
+        <button onclick="closeInviteModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-slate-500">Share this link with your group so they can sign in and join the event:</p>
+      <div class="flex items-center gap-2">
+        <input type="text" id="invite-modal-url" readonly
+          class="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-800 select-all" />
+        <button onclick="copyModalInviteUrl()" class="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0">
+          Copy
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <a id="invite-modal-wa" target="_blank" rel="noopener"
+          class="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold text-center">
+          💬 WhatsApp
+        </a>
+        <a id="invite-modal-email"
+          class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold text-center">
+          ✉️ Email
+        </a>
+      </div>
+    </div>
+  </div>
+  
+ <!-- MODAL: SUMMARIZE OPTIONS & RESULTS -->
   <div id="summarize-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5">
       <div class="flex items-center justify-between">
@@ -368,7 +396,7 @@
                 <div class="text-[11px] text-slate-500">Preview &amp; keep editing</div>
               </div>
             </label>
-            <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer has-[:checked]:border-rose-600 has-[:checked]:bg-rose-50/60">
+            <label id="final-mode-option" class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer has-[:checked]:border-rose-600 has-[:checked]:bg-rose-50/60">
               <input type="radio" name="sum-mode" value="FINAL" class="text-rose-600" />
               <div>
                 <div class="text-xs font-bold text-slate-900">Final Summary</div>
@@ -376,6 +404,9 @@
               </div>
             </label>
           </div>
+          <p id="final-owner-only-note" class="hidden text-[11px] text-slate-500 mt-1.5">
+            Only the event initiator can run the Final Summary.
+          </p>
         </div>
 
         <div>
@@ -736,13 +767,32 @@
     }
 
     function showInviteForCurrentEvent() {
-      if (!currentEventData || !currentEventData.event) return;
-      goHome();
-      presentInviteLink(currentEventData.event.eventName, currentEventData.event.inviteToken);
+      if (!currentEventData || !currentEventData.event) {
+        showToast("Open an event first.", true);
+        return;
+      }
+      const ev = currentEventData.event;
+      if (!ev.inviteToken) {
+        showToast("Invite link unavailable for this event.", true);
+        return;
+      }
+      const url = buildInviteUrl(ev.inviteToken);
+      const msg = `Join my trip group "${ev.eventName}" on Yudale: ${url}`;
+
+      document.getElementById("invite-modal-title").textContent = `Invite to "${ev.eventName}"`;
+      document.getElementById("invite-modal-url").value = url;
+      document.getElementById("invite-modal-wa").href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      document.getElementById("invite-modal-email").href = `mailto:?subject=${encodeURIComponent("Join " + ev.eventName + " on Yudale")}&body=${encodeURIComponent(msg)}`;
+      document.getElementById("invite-modal").classList.remove("hidden");
+    }
+    
+    function closeInviteModal() {
+      document.getElementById("invite-modal").classList.add("hidden");
     }
 
-    function copyInviteUrl() {
-      const input = document.getElementById("invite-url-input");
+function copyModalInviteUrl() {
+      const input = document.getElementById("invite-modal-url");
+      input.select();
       navigator.clipboard?.writeText(input.value);
       showToast("Invite link copied!");
     }
@@ -867,11 +917,20 @@
 
     /* ---------------- SUMMARIZE ---------------- */
 
-    function openSummarizeModal(showExistingFinal = false) {
+function openSummarizeModal(showExistingFinal = false) {
       if (!currentEventData) return;
       const modal = document.getElementById("summarize-modal");
       const controls = document.getElementById("summarize-controls");
       const output = document.getElementById("summarize-output");
+
+      const isFounder = (currentEventData.event.founderEmail || "").toLowerCase() === (currentUser.email || "").toLowerCase();
+      const finalOption = document.getElementById("final-mode-option");
+      const finalNote = document.getElementById("final-owner-only-note");
+      const midRadio = document.querySelector('input[name="sum-mode"][value="MID"]');
+
+      if (midRadio) midRadio.checked = true;
+      if (finalOption) finalOption.classList.toggle("hidden", !isFounder);
+      if (finalNote) finalNote.classList.toggle("hidden", isFounder);
 
       modal.classList.remove("hidden");
 
@@ -884,11 +943,11 @@
       }
     }
 
-    function closeSummarizeModal() {
+function closeSummarizeModal() {
       document.getElementById("summarize-modal").classList.add("hidden");
     }
 
-    async function runSummarize() {
+async function runSummarize() {
       if (!currentEventData || !currentEventData.event) return;
       const mode = document.querySelector('input[name="sum-mode"]:checked').value;
       const currency = document.getElementById("sum-currency").value;
@@ -906,6 +965,7 @@
         const data = await apiCall({
           action: "summarizeEvent",
           eventId: currentEventData.event.eventId,
+          email: currentUser.email,
           mode,
           currency
         });
