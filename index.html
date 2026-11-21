@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Yudale" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Yudale</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- CONFIG -->
+  <script>
+    const CONFIG = {
+      API_URL: "https://script.google.com/macros/s/AKfycbyBa7kDHk3bvEIxjLq30uQrp_yTtPLZ1mLxDzryoizbaoArRS14Hu7FPEDVSPjcNiaOIw/exec",
+      GOOGLE_CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID"
+    };
+  </script>
+
+  <!-- TOP HEADER -->
+  <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="goHome()">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-lg shadow">
+          Y
+        </div>
+        <div>
+          <div class="font-bold text-base leading-tight tracking-tight">Yudale</div>
+          <div class="text-[11px] text-slate-400 leading-tight">Split &amp; Settle</div>
+        </div>
+      </div>
+
+      <div id="header-user-bar" class="hidden items-center gap-2">
+        <button id="notif-btn" onclick="toggleNotifications()" class="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm" title="Notifications">
+          🔔
+          <span id="notif-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+        <button onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium max-w-[130px] truncate" id="header-nick-btn">
+          Profile
+        </button>
+        <button onclick="logout()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-xs text-slate-300 hover:text-white">
+          Exit
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOAST / ALERT BANNER -->
+  <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[92%] px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white bg-slate-900 border border-slate-700"></div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-3xl w-full mx-auto p-4 space-y-5">
+
+    <!-- PENDING INVITE BANNER -->
+    <div id="pending-invite-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+      <div class="text-sm">
+        <span class="font-bold">Invitation Detected!</span> Sign in or continue to join the trip group.
+      </div>
+      <button onclick="processPendingInvite()" class="shrink-0 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs">
+        Join Group
+      </button>
+    </div>
+
+    <!-- VIEW 1: AUTHENTICATION -->
+    <section id="view-auth" class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 space-y-6">
+      <div class="text-center space-y-1.5">
+        <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Travel Together. Settle Cleanly.</h1>
+        <p class="text-sm text-slate-500">Track group expenses in multiple currencies and see the simplest way to balance up.</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-2xl">
+        <button id="tab-login" onclick="switchAuthTab('login')" class="py-2 rounded-xl text-sm font-semibold bg-white text-slate-900 shadow-xs">
+          Sign In
+        </button>
+        <button id="tab-register" onclick="switchAuthTab('register')" class="py-2 rounded-xl text-sm font-semibold text-slate-600">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="form-login" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+          <input type="email" id="login-email" required placeholder="you@example.com"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm transition">
+          Sign In to Yudale
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="hidden space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+          <input type="email" id="reg-email" required placeholder="you@example.com"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-semibold text-slate-600">Nickname (max 20 chars)</label>
+            <button type="button" onclick="pickFromContacts('reg-nickname', 'reg-email')" class="text-xs font-semibold text-emerald-700 hover:underline">
+              📇 From Contacts
+            </button>
+          </div>
+          <input type="text" id="reg-nickname" maxlength="20" required placeholder="e.g. Guy"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Password (min 6 chars)</label>
+          <input type="password" id="reg-password" minlength="6" required placeholder="Create a password"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm shadow-sm transition">
+          Create Account
+        </button>
+      </form>
+
+      <!-- Google Sign-In Section -->
+      <div id="google-signin-section" class="pt-4 border-t border-slate-200 space-y-3">
+        <div class="text-center text-xs text-slate-400">or continue with Google</div>
+        <div id="g_id_signin" class="flex justify-center"></div>
+        <div id="google-fallback-note" class="hidden text-center text-xs text-slate-400">
+          Configure <code>GOOGLE_CLIENT_ID</code> in code to enable one-tap Google Sign-In.
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: DASHBOARD (EVENTS & CREATE EVENT) -->
+    <section id="view-dashboard" class="hidden space-y-5">
+      <!-- Welcome & Create Event Card -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900" id="dash-greeting">Your Trips &amp; Events</h2>
+            <p class="text-xs text-slate-500">Events you created or joined appear below.</p>
+          </div>
+          <button onclick="toggleCreateEventForm()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm">
+            + New Event
+          </button>
+        </div>
+
+        <!-- Create Event Form -->
+        <form id="form-create-event" onsubmit="handleCreateEventSubmit(event)" class="hidden pt-4 border-t border-slate-100 space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700">Event Name (required, max 20 chars)</label>
+              <span id="event-name-count" class="text-[11px] text-slate-400">0/20</span>
+            </div>
+            <input type="text" id="new-event-name" maxlength="20" required oninput="updateEventNameCount()"
+              placeholder="e.g. Greece Trip 2026"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-2">Preferred Currencies (select one or more)</label>
+            <div class="flex flex-wrap gap-2.5" id="currency-checkboxes">
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium cursor-pointer">
+                <input type="checkbox" name="event-currency" value="EUR" checked class="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span>EUR (€)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium cursor-pointer">
+                <input type="checkbox" name="event-currency" value="USD" checked class="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span>USD ($)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium cursor-pointer">
+                <input type="checkbox" name="event-currency" value="ILS" checked class="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span>ILS (₪)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium cursor-pointer">
+                <input type="checkbox" name="event-currency" value="GBP" class="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span>GBP (£)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium cursor-pointer">
+                <input type="checkbox" name="event-currency" value="JPY" class="rounded text-emerald-600 focus:ring-emerald-500" />
+                <span>JPY (¥)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button type="button" onclick="toggleCreateEventForm(false)" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium">
+              Cancel
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">
+              Submit &amp; Create
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Newly Created Invite Box -->
+      <div id="invite-link-card" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-emerald-950 text-sm" id="invite-card-title">Event Ready! Share Invite Link</div>
+          <button onclick="document.getElementById('invite-link-card').classList.add('hidden')" class="text-xs text-emerald-800 hover:underline">Dismiss</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="text" id="invite-url-input" readonly
+            class="flex-1 px-3 py-2 rounded-xl bg-white border border-emerald-300 text-xs text-slate-700 select-all" />
+          <button onclick="copyInviteUrl()" class="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">
+            Copy
+          </button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a id="whatsapp-share-link" target="_blank" rel="noopener"
+            class="px-3.5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-semibold inline-flex items-center gap-1.5">
+            💬 Share via WhatsApp
+          </a>
+          <a id="email-share-link"
+            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold inline-flex items-center gap-1.5">
+            ✉️ Share via Email
+          </a>
+        </div>
+      </div>
+
+      <!-- Events List -->
+      <div id="events-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div class="text-sm text-slate-400 col-span-full text-center py-8">Loading events...</div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: EVENT DETAIL & EXPENSES -->
+    <section id="view-event" class="hidden space-y-5">
+      <div class="flex items-center justify-between gap-2">
+        <button onclick="goHome()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700">
+          ← All Events
+        </button>
+        <div class="flex items-center gap-2">
+          <button id="event-invite-btn" onclick="showInviteForCurrentEvent()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800">
+            🔗 Invite Link
+          </button>
+          <button id="summarize-btn" onclick="openSummarizeModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">
+            📊 Summarize
+          </button>
+        </div>
+      </div>
+
+      <!-- Event Header & Members -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h2 id="event-detail-title" class="text-xl font-extrabold text-slate-900"></h2>
+            <p id="event-detail-meta" class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+          <span id="event-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+            ACTIVE
+          </span>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Group Members</div>
+          <div id="event-members-chips" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- Locked Notice (if Final Summary already done) -->
+      <div id="locked-banner" class="hidden bg-slate-900 text-white rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="text-xs">
+          <span class="font-bold text-amber-400">Event Finalized &amp; Locked:</span> No new expenses can be added.
+        </div>
+        <button onclick="openSummarizeModal(true)" class="px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs shrink-0">
+          View Final Summary
+        </button>
+      </div>
+
+      <!-- Add Expense Form -->
+      <div id="add-expense-card" class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+        <h3 class="text-base font-bold text-slate-900">Add Expense</h3>
+        <form id="form-add-expense" onsubmit="handleAddExpenseSubmit(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Description *</label>
+              <input type="text" id="exp-desc" required placeholder="e.g. Dinner at tavern"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Amount *</label>
+                <input type="number" step="0.01" min="0.01" id="exp-amount" required placeholder="0.00"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Currency *</label>
+                <select id="exp-currency" required
+                  class="w-full px-2.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm bg-white"></select>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-semibold text-slate-600">Split Between Friends *</label>
+              <button type="button" onclick="toggleSelectAllParticipants()" class="text-xs font-semibold text-emerald-700 hover:underline">
+                Select / Deselect All
+              </button>
+            </div>
+            <div id="exp-participants-list" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm transition">
+            Save Expense
+          </button>
+        </form>
+      </div>
+
+      <!-- Expenses Table -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900">Expenses</h3>
+          <span id="expense-count-label" class="text-xs text-slate-400">0 items</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                <th class="py-3 px-4">Who Paid</th>
+                <th class="py-3 px-4">Description</th>
+                <th class="py-3 px-4 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="expenses-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: SUMMARIZE OPTIONS & RESULTS -->
+  <div id="summarize-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-slate-900">Trip Summary &amp; Balance</h3>
+        <button onclick="closeSummarizeModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Controls (hidden if already locked) -->
+      <div id="summarize-controls" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Summary Type</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/60">
+              <input type="radio" name="sum-mode" value="MID" checked class="text-indigo-600" />
+              <div>
+                <div class="text-xs font-bold text-slate-900">Mid-Trip</div>
+                <div class="text-[11px] text-slate-500">Preview &amp; keep editing</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer has-[:checked]:border-rose-600 has-[:checked]:bg-rose-50/60">
+              <input type="radio" name="sum-mode" value="FINAL" class="text-rose-600" />
+              <div>
+                <div class="text-xs font-bold text-slate-900">Final Summary</div>
+                <div class="text-[11px] text-slate-500">Emails all &amp; locks event</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Balance Currency (Online FX)</label>
+          <select id="sum-currency" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="ILS">ILS (₪)</option>
+            <option value="GBP">GBP (£)</option>
+          </select>
+        </div>
+
+        <button onclick="runSummarize()" id="run-summarize-btn" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-sm">
+          Calculate Summary
+        </button>
+      </div>
+
+      <!-- Output Area -->
+      <div id="summarize-output" class="hidden space-y-4 pt-2 border-t border-slate-100"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: PROFILE NICKNAME -->
+  <div id="profile-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Your Profile</h3>
+        <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+      </div>
+      <div class="text-xs text-slate-500" id="profile-email-display"></div>
+      <form onsubmit="handleUpdateNickname(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nickname (max 20 chars)</label>
+          <input type="text" id="profile-nickname-input" maxlength="20" required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">
+          Save Nickname
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: NOTIFICATIONS -->
+  <div id="notifications-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Notifications</h3>
+        <button onclick="closeNotificationsModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
+      </div>
+      <div id="notifications-list" class="space-y-2 max-h-64 overflow-y-auto text-sm"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "yudale_session_v1";
+    let currentUser = null;
+    let currentEventData = null;
+    let unreadNotifications = [];
+    let pendingInviteToken = null;
+
+    function showToast(msg, isError = false) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.className = `fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[92%] px-4 py-3 rounded-xl shadow-xl text-sm font-medium text-white ${isError ? "bg-rose-700" : "bg-slate-900 border border-slate-700"}`;
+      el.classList.remove("hidden");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.add("hidden"), 3500);
+    }
+
+    async function apiCall(payload) {
+      if (!CONFIG.API_URL || CONFIG.API_URL.includes("YOUR_APPS_SCRIPT_WEB_APP_URL")) {
+        throw new Error("Please set CONFIG.API_URL in index.html first.");
+      }
+      const res = await fetch(CONFIG.API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    function saveSession(user) {
+      currentUser = user;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      updateHeader();
+    }
+
+    function logout() {
+      currentUser = null;
+      currentEventData = null;
+      localStorage.removeItem(STORAGE_KEY);
+      updateHeader();
+      showView("auth");
+    }
+
+    function updateHeader() {
+      const bar = document.getElementById("header-user-bar");
+      if (currentUser) {
+        bar.classList.remove("hidden");
+        bar.classList.add("flex");
+        document.getElementById("header-nick-btn").textContent = currentUser.nickname;
+        renderNotificationBadge();
+      } else {
+        bar.classList.add("hidden");
+        bar.classList.remove("flex");
+      }
+    }
+
+    function showView(viewName) {
+      ["auth", "dashboard", "event"].forEach(v => {
+        document.getElementById("view-" + v).classList.toggle("hidden", v !== viewName);
+      });
+    }
+
+    function goHome() {
+      if (!currentUser) {
+        showView("auth");
+        return;
+      }
+      currentEventData = null;
+      showView("dashboard");
+      loadDashboard();
+    }
+
+    /* ---------------- AUTH ---------------- */
+
+    function switchAuthTab(tab) {
+      const isLogin = tab === "login";
+      document.getElementById("form-login").classList.toggle("hidden", !isLogin);
+      document.getElementById("form-register").classList.toggle("hidden", isLogin);
+      document.getElementById("tab-login").className = isLogin
+        ? "py-2 rounded-xl text-sm font-semibold bg-white text-slate-900 shadow-xs"
+        : "py-2 rounded-xl text-sm font-semibold text-slate-600";
+      document.getElementById("tab-register").className = !isLogin
+        ? "py-2 rounded-xl text-sm font-semibold bg-white text-slate-900 shadow-xs"
+        : "py-2 rounded-xl text-sm font-semibold text-slate-600";
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      try {
+        const email = document.getElementById("login-email").value.trim();
+        const password = document.getElementById("login-password").value;
+        const data = await apiCall({ action: "login", email, password });
+        saveSession(data.user);
+        showToast(`Welcome back, ${data.user.nickname}!`);
+        await afterAuthSuccess();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      try {
+        const email = document.getElementById("reg-email").value.trim();
+        const nickname = document.getElementById("reg-nickname").value.trim().slice(0, 20);
+        const password = document.getElementById("reg-password").value;
+        const data = await apiCall({ action: "register", email, nickname, password });
+        saveSession(data.user);
+        showToast(`Account created for ${data.user.nickname}!`);
+        await afterAuthSuccess();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function decodeJwtPayload(token) {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+      );
+      return JSON.parse(jsonPayload);
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        const payload = decodeJwtPayload(response.credential);
+        const data = await apiCall({
+          action: "googleAuth",
+          email: payload.email,
+          name: payload.name || payload.given_name || ""
+        });
+        saveSession(data.user);
+        showToast(`Signed in as ${data.user.nickname}`);
+        await afterAuthSuccess();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function initGoogleSignIn() {
+      if (!CONFIG.GOOGLE_CLIENT_ID || CONFIG.GOOGLE_CLIENT_ID.includes("YOUR_GOOGLE_CLIENT_ID")) {
+        document.getElementById("google-fallback-note").classList.remove("hidden");
+        return;
+      }
+      const timer = setInterval(() => {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          clearInterval(timer);
+          window.google.accounts.id.initialize({
+            client_id: CONFIG.GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredentialResponse
+          });
+          window.google.accounts.id.renderButton(document.getElementById("g_id_signin"), {
+            theme: "outline",
+            size: "large",
+            width: 280
+          });
+        }
+      }, 200);
+    }
+
+    async function pickFromContacts(nickInputId, emailInputId) {
+      if (!("contacts" in navigator) || !("ContactsManager" in window)) {
+        showToast("Contact Picker is supported on Android Chrome. You can type or paste details directly.", true);
+        return;
+      }
+      try {
+        const contacts = await navigator.contacts.select(["name", "email"], { multiple: false });
+        if (contacts && contacts.length > 0) {
+          const c = contacts[0];
+          if (c.name && c.name[0] && document.getElementById(nickInputId)) {
+            document.getElementById(nickInputId).value = String(c.name[0]).slice(0, 20);
+          }
+          if (c.email && c.email[0] && emailInputId && document.getElementById(emailInputId)) {
+            document.getElementById(emailInputId).value = c.email[0];
+          }
+          showToast("Contact imported!");
+        }
+      } catch (err) {
+        showToast("Contact selection cancelled or unavailable.", true);
+      }
+    }
+
+    async function afterAuthSuccess() {
+      if (pendingInviteToken) {
+        await processPendingInvite();
+      } else {
+        goHome();
+      }
+    }
+
+    async function processPendingInvite() {
+      if (!pendingInviteToken) return;
+      if (!currentUser) {
+        showToast("Please sign in first to join the group.", true);
+        return;
+      }
+      try {
+        const res = await apiCall({
+          action: "joinEventByToken",
+          email: currentUser.email,
+          nickname: currentUser.nickname,
+          inviteToken: pendingInviteToken
+        });
+        const targetEventId = res.eventId;
+        pendingInviteToken = null;
+        document.getElementById("pending-invite-banner").classList.add("hidden");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showToast(res.alreadyJoined ? `Opened "${res.eventName}"` : `Joined "${res.eventName}"!`);
+        await openEvent(targetEventId);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    /* ---------------- DASHBOARD & EVENTS ---------------- */
+
+    function updateEventNameCount() {
+      const val = document.getElementById("new-event-name").value;
+      document.getElementById("event-name-count").textContent = `${val.length}/20`;
+    }
+
+    function toggleCreateEventForm(forceState) {
+      const form = document.getElementById("form-create-event");
+      const nextState = typeof forceState === "boolean" ? forceState : form.classList.contains("hidden");
+      form.classList.toggle("hidden", !nextState);
+    }
+
+    async function loadDashboard() {
+      document.getElementById("dash-greeting").textContent = `Hi ${currentUser.nickname} — Your Events`;
+      try {
+        const data = await apiCall({ action: "getDashboard", email: currentUser.email });
+        unreadNotifications = data.notifications || [];
+        renderNotificationBadge();
+        renderEventsList(data.events || []);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function renderEventsList(events) {
+      const container = document.getElementById("events-list");
+      if (!events.length) {
+        container.innerHTML = `<div class="col-span-full bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">No events yet. Click <strong>+ New Event</strong> to start a trip!</div>`;
+        return;
+      }
+
+      container.innerHTML = events.map(ev => `
+        <div onclick="openEvent('${escAttr(ev.eventId)}')" class="bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-400 p-4 shadow-2xs cursor-pointer transition space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="font-bold text-slate-900 text-base truncate">${escHtml(ev.eventName)}</div>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${ev.status === "LOCKED" ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-800"}">
+              ${escHtml(ev.status)}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>${ev.role === "FOUNDER" ? "👑 Created by you" : "👥 Joined"} · ${ev.memberCount} member(s)</span>
+            <span class="font-semibold text-slate-700">${escHtml((ev.allowedCurrencies || []).join(", "))}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function handleCreateEventSubmit(e) {
+      e.preventDefault();
+      try {
+        const eventName = document.getElementById("new-event-name").value.trim();
+        const checked = Array.from(document.querySelectorAll('input[name="event-currency"]:checked')).map(i => i.value);
+        if (!checked.length) {
+          showToast("Select at least one currency.", true);
+          return;
+        }
+        const data = await apiCall({
+          action: "createEvent",
+          email: currentUser.email,
+          eventName,
+          currencies: checked
+        });
+        document.getElementById("new-event-name").value = "";
+        updateEventNameCount();
+        toggleCreateEventForm(false);
+        presentInviteLink(data.event.eventName, data.event.inviteToken);
+        await loadDashboard();
+        showToast(`Created "${data.event.eventName}"!`);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function buildInviteUrl(token) {
+      const base = window.location.origin + window.location.pathname;
+      return `${base}?invite=${encodeURIComponent(token)}`;
+    }
+
+    function presentInviteLink(eventName, token) {
+      const url = buildInviteUrl(token);
+      document.getElementById("invite-card-title").textContent = `Invite Friends to "${eventName}"`;
+      document.getElementById("invite-url-input").value = url;
+      const msg = `Join my trip group "${eventName}" on Yudale: ${url}`;
+      document.getElementById("whatsapp-share-link").href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      document.getElementById("email-share-link").href = `mailto:?subject=${encodeURIComponent("Join " + eventName + " on Yudale")}&body=${encodeURIComponent(msg)}`;
+      document.getElementById("invite-link-card").classList.remove("hidden");
+    }
+
+    function showInviteForCurrentEvent() {
+      if (!currentEventData || !currentEventData.event) return;
+      goHome();
+      presentInviteLink(currentEventData.event.eventName, currentEventData.event.inviteToken);
+    }
+
+    function copyInviteUrl() {
+      const input = document.getElementById("invite-url-input");
+      navigator.clipboard?.writeText(input.value);
+      showToast("Invite link copied!");
+    }
+
+    /* ---------------- EVENT DETAIL & EXPENSES ---------------- */
+
+    async function openEvent(eventId) {
+      try {
+        const data = await apiCall({
+          action: "getEventDetails",
+          email: currentUser.email,
+          eventId
+        });
+        currentEventData = data;
+        showView("event");
+        renderEventDetail();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function renderEventDetail() {
+      const { event, members, expenses, finalSummary } = currentEventData;
+      const isLocked = event.status === "LOCKED";
+
+      document.getElementById("event-detail-title").textContent = event.eventName;
+      document.getElementById("event-detail-meta").textContent = `Currencies: ${(event.allowedCurrencies || []).join(", ")}`;
+
+      const badge = document.getElementById("event-status-badge");
+      badge.textContent = isLocked ? "LOCKED" : "ACTIVE";
+      badge.className = isLocked
+        ? "px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700"
+        : "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+
+      document.getElementById("event-members-chips").innerHTML = members.map(m => `
+        <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+          ${escHtml(m.nickname)}
+        </span>
+      `).join("");
+
+      document.getElementById("locked-banner").classList.toggle("hidden", !isLocked);
+      document.getElementById("add-expense-card").classList.toggle("hidden", isLocked);
+
+      const curSelect = document.getElementById("exp-currency");
+      curSelect.innerHTML = (event.allowedCurrencies || ["USD"]).map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join("");
+
+      const sumCurSelect = document.getElementById("sum-currency");
+      const sumCurrencies = event.allowedCurrencies && event.allowedCurrencies.length ? event.allowedCurrencies : ["USD", "EUR", "ILS"];
+      sumCurSelect.innerHTML = sumCurrencies.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join("");
+
+      document.getElementById("exp-participants-list").innerHTML = members.map(m => `
+        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium cursor-pointer">
+          <input type="checkbox" name="exp-split" value="${escAttr(m.email)}" checked class="rounded text-emerald-600" />
+          <span>${escHtml(m.nickname)}</span>
+        </label>
+      `).join("");
+
+      const nickLookup = {};
+      members.forEach(m => { nickLookup[m.email.toLowerCase()] = m.nickname; });
+
+      document.getElementById("expense-count-label").textContent = `${expenses.length} item(s)`;
+      const tbody = document.getElementById("expenses-tbody");
+      if (!expenses.length) {
+        tbody.innerHTML = `<tr><td colspan="3" class="py-6 px-4 text-center text-slate-400 text-sm">No expenses recorded yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = expenses.map(exp => {
+          const payer = nickLookup[(exp.paidByEmail || "").toLowerCase()] || exp.paidByEmail;
+          return `
+            <tr class="hover:bg-slate-50/80">
+              <td class="py-3 px-4 font-semibold text-slate-800">${escHtml(payer)}</td>
+              <td class="py-3 px-4 text-slate-700">${escHtml(exp.description)}</td>
+              <td class="py-3 px-4 text-right font-bold text-slate-900 whitespace-nowrap">${Number(exp.amount).toFixed(2)} ${escHtml(exp.currency)}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      if (isLocked && finalSummary) {
+        openSummarizeModal(true);
+      }
+    }
+
+    function toggleSelectAllParticipants() {
+      const boxes = Array.from(document.querySelectorAll('input[name="exp-split"]'));
+      const allChecked = boxes.every(b => b.checked);
+      boxes.forEach(b => { b.checked = !allChecked; });
+    }
+
+    async function handleAddExpenseSubmit(e) {
+      e.preventDefault();
+      if (!currentEventData || !currentEventData.event) return;
+      try {
+        const description = document.getElementById("exp-desc").value.trim();
+        const amount = Number(document.getElementById("exp-amount").value);
+        const currency = document.getElementById("exp-currency").value;
+        const splitBetween = Array.from(document.querySelectorAll('input[name="exp-split"]:checked')).map(b => b.value);
+
+        if (!splitBetween.length) {
+          showToast("Select at least one friend to split with.", true);
+          return;
+        }
+
+        await apiCall({
+          action: "addExpense",
+          eventId: currentEventData.event.eventId,
+          actorEmail: currentUser.email,
+          paidByEmail: currentUser.email,
+          description,
+          amount,
+          currency,
+          splitBetween
+        });
+
+        document.getElementById("exp-desc").value = "";
+        document.getElementById("exp-amount").value = "";
+        showToast("Expense added!");
+        await openEvent(currentEventData.event.eventId);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    /* ---------------- SUMMARIZE ---------------- */
+
+    function openSummarizeModal(showExistingFinal = false) {
+      if (!currentEventData) return;
+      const modal = document.getElementById("summarize-modal");
+      const controls = document.getElementById("summarize-controls");
+      const output = document.getElementById("summarize-output");
+
+      modal.classList.remove("hidden");
+
+      if (currentEventData.event.status === "LOCKED" && currentEventData.finalSummary) {
+        controls.classList.add("hidden");
+        renderSummaryOutput(currentEventData.finalSummary, true);
+      } else if (!showExistingFinal) {
+        controls.classList.remove("hidden");
+        output.classList.add("hidden");
+      }
+    }
+
+    function closeSummarizeModal() {
+      document.getElementById("summarize-modal").classList.add("hidden");
+    }
+
+    async function runSummarize() {
+      if (!currentEventData || !currentEventData.event) return;
+      const mode = document.querySelector('input[name="sum-mode"]:checked').value;
+      const currency = document.getElementById("sum-currency").value;
+
+      if (mode === "FINAL") {
+        const ok = confirm("Final Summary will send the summary by email to all members and LOCK this event so no more expenses can be edited. Continue?");
+        if (!ok) return;
+      }
+
+      const btn = document.getElementById("run-summarize-btn");
+      btn.disabled = true;
+      btn.textContent = "Calculating...";
+
+      try {
+        const data = await apiCall({
+          action: "summarizeEvent",
+          eventId: currentEventData.event.eventId,
+          mode,
+          currency
+        });
+
+        renderSummaryOutput(data.summary, data.locked);
+        if (data.locked) {
+          document.getElementById("summarize-controls").classList.add("hidden");
+          await openEvent(currentEventData.event.eventId);
+          showToast("Final summary sent & event locked!");
+        }
+      } catch (err) {
+        showToast(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Calculate Summary";
+      }
+    }
+
+    function renderSummaryOutput(summary, isLocked) {
+      const output = document.getElementById("summarize-output");
+      const cur = summary.currency;
+
+      const paidHtml = summary.breakdown.map(b => `
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-none text-sm">
+          <span class="font-medium text-slate-800">${escHtml(b.nickname)}</span>
+          <span class="font-bold text-slate-900">${Number(b.totalPaid).toFixed(2)} ${escHtml(cur)}</span>
+        </div>
+      `).join("");
+
+      const recHtml = (!summary.recommendations || !summary.recommendations.length)
+        ? `<div class="text-sm text-emerald-700 font-medium">Everyone is balanced!</div>`
+        : summary.recommendations.map(r => `
+          <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-sm text-indigo-950 flex items-center justify-between gap-2">
+            <span><strong>${escHtml(r.fromNickname)}</strong> pays <strong>${escHtml(r.toNickname)}</strong></span>
+            <span class="font-extrabold">${Number(r.amount).toFixed(2)} ${escHtml(cur)}</span>
+          </div>
+        `).join("");
+
+      output.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-700">${summary.mode === "FINAL" ? "Final Summary (Locked)" : "Mid-Trip Summary"}</span>
+          <span class="text-xs text-slate-400">Currency: ${escHtml(cur)}</span>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-slate-500 uppercase mb-1">Total Paid Per Person</div>
+          <div class="bg-slate-50 rounded-2xl p-3">${paidHtml}</div>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-slate-500 uppercase mb-1.5">How to Make It Even</div>
+          <div class="space-y-2">${recHtml}</div>
+        </div>
+        ${isLocked ? `<div class="text-xs text-slate-500">A copy of this final summary was emailed to all group members.</div>` : ""}
+      `;
+      output.classList.remove("hidden");
+    }
+
+    /* ---------------- PROFILE & NOTIFICATIONS ---------------- */
+
+    function openProfileModal() {
+      document.getElementById("profile-email-display").textContent = currentUser.email;
+      document.getElementById("profile-nickname-input").value = currentUser.nickname;
+      document.getElementById("profile-modal").classList.remove("hidden");
+    }
+
+    function closeProfileModal() {
+      document.getElementById("profile-modal").classList.add("hidden");
+    }
+
+    async function handleUpdateNickname(e) {
+      e.preventDefault();
+      try {
+        const nickname = document.getElementById("profile-nickname-input").value.trim().slice(0, 20);
+        const data = await apiCall({ action: "updateNickname", email: currentUser.email, nickname });
+        saveSession({ ...currentUser, nickname: data.nickname });
+        closeProfileModal();
+        showToast("Nickname updated!");
+        if (currentEventData && currentEventData.event) {
+          await openEvent(currentEventData.event.eventId);
+        } else {
+          await loadDashboard();
+        }
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    }
+
+    function renderNotificationBadge() {
+      const badge = document.getElementById("notif-badge");
+      if (unreadNotifications.length > 0) {
+        badge.textContent = unreadNotifications.length;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    async function toggleNotifications() {
+      const modal = document.getElementById("notifications-modal");
+      const list = document.getElementById("notifications-list");
+      list.innerHTML = unreadNotifications.length
+        ? unreadNotifications.map(n => `<div class="p-3 rounded-xl bg-slate-50 border border-slate-200">${escHtml(n.message)}</div>`).join("")
+        : `<div class="text-slate-400 text-center py-4">No new notifications.</div>`;
+      modal.classList.remove("hidden");
+
+      if (unreadNotifications.length > 0 && currentUser) {
+        try {
+          await apiCall({ action: "markNotificationsRead", email: currentUser.email });
+          unreadNotifications = [];
+          renderNotificationBadge();
+        } catch (_) {}
+      }
+    }
+
+    function closeNotificationsModal() {
+      document.getElementById("notifications-modal").classList.add("hidden");
+    }
+
+    function escHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+    }
+
+    function escAttr(str) {
+      return String(str || "").replace(/"/g, "&quot;");
+    }
+
+    /* ---------------- INIT ---------------- */
+
+    (async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const inviteParam = params.get("invite");
+      if (inviteParam) {
+        pendingInviteToken = inviteParam;
+        document.getElementById("pending-invite-banner").classList.remove("hidden");
+      }
+
+      initGoogleSignIn();
+
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          currentUser = JSON.parse(saved);
+          updateHeader();
+          if (pendingInviteToken) {
+            await processPendingInvite();
+          } else {
+            goHome();
+          }
+          return;
+        } catch (_) {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+
+      showView("auth");
+    })();
+  </script>
+</body>
+</html>
